@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Gyro Sticker</title>
+    <style>
+        /* Basic Setup */
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden; /* Prevents scrollbars */
+        }
+
+        /* Centering container */
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            perspective: 800px; /* Essential for 3D transform effect */
+        }
+
+        /* The Sticker itself */
+        #sticker {
+            width: 280px;
+            height: 280px;
+            border-radius: 50%; /* Makes it circular */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            transition: transform 0.1s ease-out; /* Smooths the 3D tilt */
+            
+            /* -- Default holographic gradient as a fallback -- */
+            background: radial-gradient(circle at 50% 50%, #ff79c6, #79ffc6, #c679ff, #ffcb79);
+        }
+
+        /* Text inside the sticker */
+        #sticker-text {
+            color: white;
+            font-size: 2.5em;
+            font-weight: bold;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Permission overlay */
+        #permission-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            flex-direction: column;
+            z-index: 100;
+            cursor: pointer;
+        }
+        #permission-overlay h2 {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- This overlay asks for sensor permission on iOS and other modern browsers -->
+    <div id="permission-overlay">
+        <div>
+            <h2>Glitter Effect</h2>
+            <p>Tap to activate motion sensors.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="sticker">
+            <span id="sticker-text">Hello, World</span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sticker = document.getElementById('sticker');
+            const permissionOverlay = document.getElementById('permission-overlay');
+
+            // The colors for our holographic gradient
+            const colors = [
+                '#ff79c6' /* Pink */,
+                '#79ffc6' /* Mint */,
+                '#c679ff' /* Purple */,
+                '#ffcb79' /* Orange */
+            ].join(', ');
+
+            const handleOrientation = (event) => {
+                // beta: front-back tilt (-180 to 180)
+                // gamma: left-right tilt (-90 to 90)
+                let { beta, gamma } = event;
+
+                // Normalize values for safety
+                beta = beta || 0;
+                gamma = gamma || 0;
+
+                // We'll constrain the tilt effect to a reasonable range, e.g., -60 to 60 degrees
+                const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+                const tiltX = clamp(gamma, -60, 60);
+                const tiltY = clamp(beta, -60, 60);
+
+                // --- 1. Update Gradient Position ---
+                // Map the tilt values (-60 to 60) to a percentage (0 to 100)
+                // This will control the 'at X% Y%' part of the radial gradient
+                const backgroundPosX = 50 + (tiltX / 60) * 50;
+                const backgroundPosY = 50 + (tiltY / 60) * 50;
+                sticker.style.background = `radial-gradient(circle at ${backgroundPosX}% ${backgroundPosY}%, ${colors})`;
+
+                // --- 2. Update 3D Transform ---
+                // This makes the sticker itself appear to tilt in 3D space
+                // The values are inverted for a more natural feel
+                sticker.style.transform = `rotateY(${-tiltX * 0.3}deg) rotateX(${tiltY * 0.3}deg)`;
+            };
+
+            const requestAccess = () => {
+                // Hide the overlay immediately
+                permissionOverlay.style.display = 'none';
+                
+                // For iOS 13+ devices
+                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    DeviceOrientationEvent.requestPermission()
+                        .then(permissionState => {
+                            if (permissionState === 'granted') {
+                                window.addEventListener('deviceorientation', handleOrientation);
+                            } else {
+                                alert('Permission not granted. The effect will not work.');
+                            }
+                        })
+                        .catch(console.error);
+                } else {
+                    // For non-iOS 13+ devices that support the event
+                    window.addEventListener('deviceorientation', handleOrientation);
+                }
+            };
+            
+            // Add click listener to the overlay to request permission
+            permissionOverlay.addEventListener('click', requestAccess);
+        });
+    </script>
+</body>
+</html>
